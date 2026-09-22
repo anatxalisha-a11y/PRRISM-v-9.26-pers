@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REMOTE_HOST="killarney"
+REMOTE_BUILD_DIR="~/projects/aip-creager/aanat/prrism-rag/out/current"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBLISH_SCRIPT="${SCRIPT_DIR}/publish_release.py"
+
+TEMP_DIR="$(mktemp -d)"
+LOCAL_BUILD_DIR="${TEMP_DIR}/current"
+
+cleanup() {
+    rm -rf "${TEMP_DIR}"
+}
+trap cleanup EXIT
+
+echo "PRRISM release publication"
+echo "=========================="
+echo
+echo "Retrieving validated build from Killarney..."
+
+mkdir -p "${LOCAL_BUILD_DIR}"
+
+scp -r \
+    "${REMOTE_HOST}:${REMOTE_BUILD_DIR}/." \
+    "${LOCAL_BUILD_DIR}/"
+
+echo
+echo "Build retrieved."
+echo "Validating and preparing release..."
+
+python "${PUBLISH_SCRIPT}" "${LOCAL_BUILD_DIR}" "$@"
