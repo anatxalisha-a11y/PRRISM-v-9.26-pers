@@ -10,3 +10,4 @@ out/
 # Secrets / environment
 .env
 .env.*
+*.tar.gz
