@@ -812,7 +812,13 @@ def build_index(
 # ----------------------------
 # Save outputs
 # ----------------------------
-def save_outputs(index: Dict, out_dir: str = OUT_DIR) -> None:
+def save_outputs(
+    index: Dict,
+    out_dir: str = OUT_DIR,
+    *,
+    build_id: str,
+    approved_sources: int,
+) -> None:
     os.makedirs(out_dir, exist_ok=True)
 
     faiss.write_index(index["faiss_index"], os.path.join(out_dir, "faiss.index"))
@@ -829,16 +835,38 @@ def save_outputs(index: Dict, out_dir: str = OUT_DIR) -> None:
     with open(os.path.join(out_dir, "skipped_chunks.json"), "w", encoding="utf-8") as f:
         json.dump(index.get("skipped_chunks", []), f, ensure_ascii=False, indent=2)
 
-    with open(os.path.join(out_dir, "build_meta.json"), "w", encoding="utf-8") as f:
+    successfully_indexed_sources = sum(
+        1
+        for source in index["source_summary"].values()
+        if source["num_chunks"] > 0
+    )
+
+    build_meta = {
+        "build_id": build_id,
+        "built_at": datetime.now(timezone.utc).isoformat(),
+        "model": index["model"],
+        "dim": index["dim"],
+        "approved_sources": approved_sources,
+        "successfully_indexed_sources": successfully_indexed_sources,
+        "sources_without_final_chunks": (
+            approved_sources - successfully_indexed_sources
+        ),
+        "recorded_source_failure_events": len(
+            index.get("failed_sources", [])
+        ),
+        "final_chunks": len(index["chunks"]),
+        "skipped_chunk_events": len(
+            index.get("skipped_chunks", [])
+        ),
+    }
+
+    with open(
+        os.path.join(out_dir, "build_meta.json"),
+        "w",
+        encoding="utf-8",
+    ) as f:
         json.dump(
-            {
-                "model": index["model"],
-                "dim": index["dim"],
-                "num_chunks": len(index["chunks"]),
-                "num_sources": len(index["source_summary"]),
-                "num_failed_sources": len(index.get("failed_sources", [])),
-                "num_skipped_chunks": len(index.get("skipped_chunks", [])),
-            },
+            build_meta,
             f,
             ensure_ascii=False,
             indent=2,
@@ -930,7 +958,12 @@ def main():
         print(f"  {candidate_dir}")
 
         try:
-            save_outputs(index, candidate_dir)
+            save_outputs(
+                index,
+                candidate_dir,
+                build_id=candidate_dir.name,
+                approved_sources=len(sources),
+            )
 
             print("\nChecking corpus quality...")
 

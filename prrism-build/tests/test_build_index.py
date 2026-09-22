@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import pytest
+import json
 
 
 # ---------------------------------------------------------
@@ -722,3 +723,56 @@ def test_corpus_quality_gate_rejects_empty_corpus():
             total_sources=0,
             successful_sources=0,
         )
+
+def test_save_outputs_writes_unambiguous_build_metadata(tmp_path):
+    fake_index = {
+        "model": "bge-base-en-v1.5",
+        "dim": 768,
+        "chunks": [
+            {"source_id": "SOURCE_A"},
+            {"source_id": "SOURCE_A"},
+            {"source_id": "SOURCE_B"},
+        ],
+        "source_summary": {
+            "SOURCE_A": {"num_chunks": 2},
+            "SOURCE_B": {"num_chunks": 1},
+            "SOURCE_C": {"num_chunks": 0},
+        },
+        "failed_sources": [
+            {"source_id": "SOURCE_C"},
+            {"source_id": "SOURCE_D"},
+        ],
+        "skipped_chunks": [
+            {"source_id": "SOURCE_C"},
+        ],
+    }
+
+    fake_index["faiss_index"] = builder.faiss.IndexFlatIP(768)
+
+    builder.save_outputs(
+        fake_index,
+        str(tmp_path),
+        build_id="20260922T203002Z",
+        approved_sources=4,
+    )
+
+    with open(
+        tmp_path / "build_meta.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        metadata = json.load(f)
+
+    assert metadata["build_id"] == "20260922T203002Z"
+    assert metadata["model"] == "bge-base-en-v1.5"
+    assert metadata["dim"] == 768
+
+    assert metadata["approved_sources"] == 4
+    assert metadata["successfully_indexed_sources"] == 2
+    assert metadata["sources_without_final_chunks"] == 2
+
+    assert metadata["recorded_source_failure_events"] == 2
+    assert metadata["final_chunks"] == 3
+    assert metadata["skipped_chunk_events"] == 1
+
+    assert "built_at" in metadata
