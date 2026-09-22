@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+MODEL="bge-base-en-v1.5"
+ACCOUNT="aip-creager"
+WORK_DIR="/project/6101846/aanat/embed_poc"
+
+VEC_INF_BIN="/project/6101846/aanat/venv/bin/vec-inf"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+POLL_SECONDS=30
+MAX_WAIT_SECONDS=1800
+JOB_ID=""
+
+echo "======================================"
+echo " PRRISM rebuild"
+echo "======================================"
+
+# --------------------------------------------------
+# 1. Environment
+# --------------------------------------------------
+
+echo
+echo "[1/6] Preparing Vector environment..."
+
+deactivate 2>/dev/null || true
+
+module load StdEnv/2023
+module load gcc/12.3
+module load cuda/12.6
+module load python/3.11.5
+module load faiss/1.12.0
+
+source ~/projects/aip-creager/aanat/venv311/bin/activate
+
+echo "Python: $(python --version 2>&1)"
+if [[ ! -x "$VEC_INF_BIN" ]]; then
+    echo "ERROR: vec-inf not found or not executable:"
+    echo "  $VEC_INF_BIN"
+    exit 1
+fi
+
+echo "vec-inf: $VEC_INF_BIN"
+
+python -c "import faiss, numpy; print('FAISS:', faiss.__version__)"
+
+# --------------------------------------------------
+# 2. Required secrets/config
+# --------------------------------------------------
+
+echo
+echo "[2/6] Checking configuration..."
+
+if [[ -z "${ZOTERO_API_KEY:-}" ]]; then
+    echo "ERROR: ZOTERO_API_KEY is not set."
+    exit 1
+fi
+
+echo "Zotero API key: available"
+
+# --------------------------------------------------
+# Cleanup
+# --------------------------------------------------
+
+cleanup() {
+    if [[ -n "${JOB_ID:-}" ]]; then
+        echo
+        echo "Shutting down vec-inf job ${JOB_ID}..."
+        "$VEC_INF_BIN" shutdown "$JOB_ID" || true
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
+# --------------------------------------------------
+# 3. Launch BGE
+# --------------------------------------------------
+
+echo
+echo "[3/6] Launching BGE embedding service..."
+
+LAUNCH_JSON="$(
+    "$VEC_INF_BIN" launch "$MODEL" \
+        -A "$ACCOUNT" \
+        -D "$WORK_DIR" \
+        --json-mode
+)"
+
+JOB_ID="$(
+    printf '%s' "$LAUNCH_JSON" |
+    python -c 'import sys,json; print(json.load(sys.stdin)["slurm_job_id"])'
+)"
+
+echo "Submitted Slurm job: $JOB_ID"
+
+# --------------------------------------------------
+# 4. Wait for vec-inf
+# --------------------------------------------------
+
+echo
+echo "[4/6] Waiting for embedding service..."
+
+WAITED_SECONDS=0
+
+while true; do
+
+    STATUS_JSON="$(
+        "$VEC_INF_BIN" status "$JOB_ID" --json-mode
+    )"
+
+    MODEL_STATUS="$(
+        printf '%s' "$STATUS_JSON" |
+        python -c 'import sys,json; print(json.load(sys.stdin).get("model_status", ""))'
+    )"
+
+    BASE_URL="$(
+        printf '%s' "$STATUS_JSON" |
+        python -c 'import sys,json; print(json.load(sys.stdin).get("base_url", ""))'
+    )"
+
+    echo "Status: $MODEL_STATUS"
+
+    if [[ "$MODEL_STATUS" == "READY" && "$BASE_URL" != "UNAVAILABLE" && -n "$BASE_URL" ]]; then
+        break
+    fi
+
+    if (( WAITED_SECONDS >= MAX_WAIT_SECONDS )); then
+    echo "ERROR: vec-inf did not become READY within ${MAX_WAIT_SECONDS} seconds."
+    exit 1
+    fi
+
+    sleep "$POLL_SECONDS"
+    WAITED_SECONDS=$((WAITED_SECONDS + POLL_SECONDS))
+
+done
+
+export VEC_INF_URL="$BASE_URL"
+export VEC_INF_MODEL="$MODEL"
+
+echo "Embedding service ready:"
+echo "  $VEC_INF_URL"
+
+# --------------------------------------------------
+# 5. Verify actual HTTP service
+# --------------------------------------------------
+
+echo
+echo "[5/6] Verifying embedding endpoint..."
+
+python - <<'PY'
+import os
+import time
+import urllib.request
+
+url = os.environ["VEC_INF_URL"].rstrip("/") + "/models"
+
+for attempt in range(1, 11):
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            if 200 <= response.status < 300:
+                print(f"Embedding endpoint ready: {url}")
+                break
+    except Exception as exc:
+        print(
+            f"Endpoint not ready "
+            f"(attempt {attempt}/10): {exc}"
+        )
+
+    time.sleep(10)
+else:
+    raise RuntimeError(
+        f"Embedding endpoint never became ready: {url}"
+    )
+PY
+
+# --------------------------------------------------
+# 6. Build, validate, publish
+# --------------------------------------------------
+
+echo
+echo "[6/6] Building PRRISM..."
+
+cd "$REPO_ROOT"
+
+python prrism-build/build_index.py
+
+echo
+echo "======================================"
+echo " PRRISM rebuild complete"
+echo "======================================"

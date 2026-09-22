@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Generated PRRISM build artifacts
+out/
+
+# Secrets / environment
+.env
+.env.*

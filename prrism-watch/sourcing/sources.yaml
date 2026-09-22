@@ -1,0 +1,196 @@
+# Curated seed list for prrism-watch. Each entry is one of:
+#   - {name, rss: <feed url>}                                    one-hop, feed parsed directly
+#   - {name, scan_page: <page url>}                               one-hop, anchor-text keyword match
+#                                                                  (fits content-listing pages: blogs, newsrooms)
+#   - {name, scan_index, detail_link_pattern?, max_detail_pages?} two-hop, full-text keyword match on
+#                                                                  each linked detail page/PDF (fits meeting/
+#                                                                  agenda listings) — see discover_curated.py
+#
+# Every URL and RSS feed below was verified live during research (not
+# guessed) as of 2026-08-30 — see README.md "Curated source research" for
+# per-section notes and confidence caveats.
+
+# ---------------------------------------------------------------------------
+# GOVERNMENT — federal, provincial, territorial
+# ---------------------------------------------------------------------------
+government:
+  # FEDERAL
+  - name: "Office of the Privacy Commissioner of Canada — PIPEDA findings (businesses)"
+    rss: "https://www.priv.gc.ca/en/rss/pipeda/"
+  - name: "Office of the Privacy Commissioner of Canada — Privacy Act findings (federal institutions)"
+    rss: "https://www.priv.gc.ca/en/rss/pa/"
+  - name: "Office of the Privacy Commissioner of Canada — news releases"
+    rss: "https://www.priv.gc.ca/en/rss/news/"
+  - name: "Office of the Privacy Commissioner of Canada — guidance for businesses"
+    rss: "https://www.priv.gc.ca/en/rss/gb/"
+  - name: "ISED — AIDA / news (no feed; static list)"
+    scan_page: "https://www.canada.ca/en/innovation-science-economic-development/news.html"
+  - name: "Treasury Board of Canada Secretariat — department news"
+    rss: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=treasuryboardsecretariat&sort=publishedDate&orderBy=desc&pick=50&format=atom"
+  - name: "Department of Justice Canada — news"
+    rss: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=departmentjustice&sort=publishedDate&orderBy=desc&pick=50&format=atom"
+  - name: "open.canada.ca — Open Government Portal blog"
+    rss: "http://open.canada.ca/en/blog/feed"
+
+  # PROVINCIAL / TERRITORIAL privacy & information commissioners
+  - name: "BC — OIPC rulings and reports (orders, decisions, investigations)"
+    rss: "https://www.oipc.bc.ca/rss/RulingsAndReports.xml"
+  - name: "BC — OIPC news and events"
+    rss: "https://www.oipc.bc.ca/rss/NewsAndEvents.xml"
+  - name: "Alberta — OIPC (site-wide feed; Orders/Investigation Reports need the page below too)"
+    rss: "https://oipc.ab.ca/feed/"
+  - name: "Alberta — OIPC orders"
+    scan_page: "https://oipc.ab.ca/decisions/orders/"
+  - name: "Alberta — OIPC investigation reports"
+    scan_page: "https://oipc.ab.ca/decisions/investigation-reports/"
+  - name: "Saskatchewan — IPC (site-wide feed)"
+    rss: "https://oipc.sk.ca/feed/"
+  - name: "Saskatchewan — IPC reports"
+    scan_page: "https://oipc.sk.ca/reports/"
+  - name: "Manitoba Ombudsman — news"
+    scan_page: "https://www.ombudsman.mb.ca/news-and-events/news/"
+  - name: "Ontario — IPC access-to-information orders (Decisia)"
+    rss: "https://decisions.ipc.on.ca/ipc-cipvp/orders/en/rss.do"
+  - name: "Ontario — IPC privacy reports (Decisia)"
+    rss: "https://decisions.ipc.on.ca/ipc-cipvp/privacy/en/rss.do"
+  - name: "Ontario — IPC news releases"
+    scan_page: "https://www.ipc.on.ca/en/media-centre/news-releases"
+  - name: "Quebec — CAI actualités"
+    scan_page: "https://www.cai.gouv.qc.ca/actualites"
+  - name: "Quebec — Ministère de la Cybersécurité et du Numérique (biometrics/digital ID policy)"
+    scan_page: "https://www.quebec.ca/gouvernement/ministeres-organismes/cybersecurite-numerique"
+  - name: "New Brunswick — Ombud NB, information & privacy"
+    scan_page: "https://ombudnb.ca/information-and-privacy/"
+  - name: "Nova Scotia — OIPC news"
+    scan_page: "https://oipc.novascotia.ca/news"
+  - name: "Nova Scotia — OIPC publicly issued reports"
+    scan_page: "https://oipc.novascotia.ca/publicly-issued-reports"
+  - name: "PEI — Information and Privacy Commissioner, rulings and orders"
+    scan_page: "https://www.assembly.pe.ca/offices/information-and-privacy-commissioner/rulings-and-orders"
+  - name: "Newfoundland and Labrador — OIPC releases (pre-filtered NL gov feed)"
+    scan_page: "https://www.gov.nl.ca/releases/category/oipc/"
+  - name: "Yukon Accountability — IPC"
+    scan_page: "https://yukonaccountability.ca/ipc"
+  - name: "Northwest Territories — ATIPP Commission newsroom (its /feed/ is live but currently empty)"
+    scan_page: "https://atipp-nt.ca/resources/newsroom/"
+  - name: "Nunavut — Office of the Information & Privacy Commissioner"
+    scan_page: "https://atipp-nu.ca/"
+
+# ---------------------------------------------------------------------------
+# MUNICIPAL — no city in this set exposes a public API/feed for agenda
+# content, so every entry here uses the two-hop scan_index path (index page's
+# links are just dates -> fetch detail pages, often PDFs, and keyword-match
+# their full text). A live per-source check (2026-08-31) dropped 7 entries
+# that were never actually finding anything to check, not just quiet:
+# Vancouver's own council page and all 4 eScribe-hosted cities' council/police
+# board pages (Calgary, Edmonton, Ottawa, Halifax) turned out to render their
+# meeting list client-side via ASP.NET postback (javascript:__doPostBack(...))
+# rather than serving it as real HTML — a plain HTTP fetch sees an empty page,
+# so detail_link_pattern was never the problem. Fixing that for real needs a
+# headless browser (Playwright), which wasn't added here — deliberately out
+# of scope for now rather than left in as silently-broken entries. Re-add
+# those cities once/if that gets built. What's left below was verified to
+# actually fetch and keyword-match real detail-page content.
+# ---------------------------------------------------------------------------
+municipal:
+  - name: "Toronto Police Services Board"
+    scan_index: "https://tpsb.ca/home/current-and-past-meetings/"
+    detail_link_pattern: "wp-content/uploads"
+    max_detail_pages: 8
+  # KNOWN BROKEN as of live dry-run (2026-08-30): returns 403 Forbidden to a
+  # plain HTTP fetch — bot-protected. Left in as a marker of known-uncovered
+  # ground, not actively contributing candidates until this gets a proper fix.
+  - name: "Toronto City Council (TMMIS)"
+    scan_index: "https://secure.toronto.ca/council/"
+    max_detail_pages: 10
+  - name: "Vancouver Police Board"
+    scan_index: "https://vpd.ca/policies-strategies/"
+    detail_link_pattern: "wp-content/uploads"
+    max_detail_pages: 8
+  - name: "Montreal City Council / Commission de la sécurité publique (SPVM oversight)"
+    scan_index: "https://montreal.ca/conseils-decisionnels/conseil-municipal"
+    max_detail_pages: 10
+  - name: "Calgary Police Commission"
+    scan_index: "https://www.calgarypolicecommission.ca/meeting-documents/"
+    detail_link_pattern: "wp-content/uploads"
+    max_detail_pages: 8
+  - name: "Edmonton Police Commission"
+    scan_index: "https://edmontonpolicecommission.com/meetings/"
+    max_detail_pages: 8
+  # KNOWN BROKEN as of live dry-run (2026-08-30): dmis.winnipeg.ca fails TLS
+  # verification (SSL_CERTIFICATE_VERIFY_FAILED) — an infra issue on the
+  # city's side (recently rebuilt site per research), not something to work
+  # around by disabling cert verification. Re-check periodically.
+  - name: "Winnipeg City Council (DMIS)"
+    scan_index: "https://dmis.winnipeg.ca/"
+    max_detail_pages: 10
+  - name: "Winnipeg Police Board"
+    scan_index: "https://winnipeg.ca/policeboard"
+    max_detail_pages: 8
+
+# ---------------------------------------------------------------------------
+# COMPANY — ISED voluntary AI code of conduct signatories (AIDA itself died
+# at prorogation Jan 2025; the voluntary code is currently the only primary-
+# source federal AI-governance artifact with a signatory list — full list of
+# 49 orgs: https://ised-isde.canada.ca/site/ised/en/voluntary-code-conduct-responsible-development-and-management-advanced-generative-ai-systems)
+# plus facial recognition / biometrics vendors with a confirmed or plausible
+# Canadian nexus. Global-newsroom signatories with no Canada-specific or
+# FR-adjacent content (IBM, SAP, Salesforce, etc.) were left out to avoid
+# flooding the LLM judge with noise — add individually if wanted.
+# Trulioo/Certn/Nymi scan_page targets are a best-guess "/blog" path, not
+# independently verified — check these first if they come back empty.
+# ---------------------------------------------------------------------------
+company:
+  - name: "TELUS"
+    scan_page: "https://www.telus.com/en/about/trust/responsible-ai"
+  - name: "BlackBerry"
+    rss: "https://blogs.blackberry.com/en/category/security/artificial-intelligence/feed"
+  - name: "CGI"
+    rss: "https://www.cgi.com/en/blog/feed"
+  - name: "OpenText"
+    scan_page: "https://blogs.opentext.com/secure-trusted-and-ethical-ai/"
+  - name: "Cohere"
+    rss: "https://cohere.com/blog/rss.xml"
+  - name: "Mila (Quebec AI Institute)"
+    scan_page: "https://mila.quebec/en/research/strategic-priorities/responsible-ai"
+  - name: "Vector Institute"
+    scan_page: "https://vectorinstitute.ai/ai-trust-and-safety-principles/"
+  - name: "Clearview AI"
+    rss: "https://www.clearview.ai/blog-feed.xml"
+  # KNOWN BROKEN as of live dry-run (2026-08-30): returns 403 Forbidden to a
+  # plain HTTP fetch — NEC's site blocks non-browser user agents.
+  - name: "NEC"
+    scan_page: "https://www.nec.com/en/press/"
+  - name: "Idemia"
+    scan_page: "https://www.idemia.com/impact-ethics"
+  - name: "Cognitec"
+    scan_page: "https://www.cognitec.com/news-cognitec.html"
+  - name: "iProov"
+    scan_page: "https://www.iproov.com/blog"
+  - name: "Facephi"
+    rss: "https://facephi.com/observatory/en/feed/"
+  - name: "Paravision"
+    scan_page: "https://www.paravision.ai/news"
+  - name: "BioConnect"
+    rss: "https://bioconnect.com/blog/rss.xml"
+  - name: "Auror"
+    scan_page: "https://www.auror.co/the-intel"
+  - name: "Face4 Systems"
+    rss: "https://face4systems.com/feed/"
+  - name: "Trulioo"
+    scan_page: "https://www.trulioo.com/blog"
+  - name: "Certn"
+    scan_page: "https://certn.co/blog/"
+  - name: "Nymi"
+    scan_page: "https://www.nymi.com/nymi-blog"
+
+# ---------------------------------------------------------------------------
+# NEWS — deliberately left on the cheapest path (generic search API); queries
+# are written to favor primary sources (releases, court text, investigations)
+# over secondary commentary.
+# ---------------------------------------------------------------------------
+news_queries:
+  - 'facial recognition Canada "news release"'
+  - "facial recognition technology Canada court ruling"
+  - "facial recognition ban Canada police"
+  - "facial recognition Canada privacy commissioner investigation"

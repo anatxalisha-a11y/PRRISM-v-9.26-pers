@@ -1,0 +1,59 @@
+{
+  "practice_tags": {
+    "standards testing": "Practices involving benchmarking, formal evaluation, standardized testing, conformance checks, certification processes, or measuring system performance against defined technical standards.",
+    "regulatory compliance": "Practices involving legal compliance, regulatory obligations, policy adherence, governance controls, documentation for regulators, or alignment with applicable rules and requirements.",
+    "collaboration": "Practices involving cross-functional coordination, public consultation, stakeholder engagement, multi or interdisciplinary teamwork, partnership with external organizations, or collaboration between technical, legal, policy, and operational groups.",
+    "human oversight": "Practices involving human review, human-in-the-loop decision making, manual approval or intervention, escalation procedures, monitoring by human operators, or oversight of AI system outputs and impacts.",
+    "explainability": "Practices involving interpretability, explainability, traceability, documentation of model design and behavior, making outputs understandable to users or reviewers and reproducible by external reviewers, or communicating how system decisions are made.",
+    "post-release assessment": "Practices involving post-deployment risk monitoring, ongoing evaluation, incident review, performance tracking after release, drift detection, harm monitoring, or reassessment of deployed systems over various use cases over time.",
+    "user tooling": "Practices involving dashboards, controls, reporting interfaces, user-facing safety tools, documentation tools, auditing tools, or operational tooling that helps users monitor, govern, or interact with AI systems responsibly.",
+    "guidelines and training": "Practices involving establishment of corporate principles and values, best-practice documents, playbooks, onboarding materials, employee training, responsible AI education, instructions for use, or organizational guidance on safe deployment.",
+    "external validation": "Practices involving third-party audits, external review, independent assessment, outside testing, consultation with external experts, or validation performed by organizations beyond the deploying entity."
+  },
+  "ethics_tags": {
+    "fairness": "Content about bias, disparate impact, demographic disparities, equitable treatment, inclusion, non-discrimination, or fairness concerns in AI systems and their outcomes.",
+    "accountability": "Content about responsibility, governance, ownership, auditability, answerability, reporting structures, accountability, or mechanisms for oversight and accountability.",
+    "transparency": "Content about openness, disclosure, visibility into system design, processes or use, documentation, communication with stakeholders.",
+    "ethics": "Content about ethical principles, moral responsibilities, responsible innovation, societal impacts, human values, harm reduction, public interest, or broader ethical reasoning around AI deployment.",
+    "risk framework": "Content about risk identification, risk assessment, risk management, mitigation frameworks, safety governance, controls, lifecycle risk analysis, or structured approaches to minimizing potential AI-related harm.",
+    "laws and regulations": "Content about statutes, regulations, legal frameworks or obligations, compliance mandates, jurisdictional requirements, enforcement, legal frameworks, or references to formal law and regulatory regimes."
+  },
+  "jurisdiction_tags": {
+    "Canada": {
+      "definition": "Laws, regulations, and public policies such as limited and prohibited uses, bans, and moratoriums related to the development and use of facial recognition technologies in Canada, including those pertaining federally or provincially across all 10 provinces and 3 territories.",
+      "aliases": ["Canada", "Canadian", "federal Canada", "provincial Canada"],
+      "jurisdictions": [
+        "British Columbia", "Alberta", "Saskatchewan", "Manitoba", "Ontario",
+        "Quebec", "New Brunswick", "Nova Scotia", "Prince Edward Island",
+        "Newfoundland and Labrador", "Yukon", "Northwest Territories", "Nunavut"
+      ]
+    },
+    "United States": {
+      "definition": "Laws, regulations, and public policies such as limited and prohibited uses, bans, and moratoriums related to the development and use of facial recognition technologies in the United States, including those pertaining federally or by state across all 50 states.",
+      "aliases": ["United States", "United States of America", "U.S.", "US"],
+      "jurisdictions": [
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+        "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+        "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+        "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+        "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+        "New Hampshire", "New Jersey", "New Mexico", "New York",
+        "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+        "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+        "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+        "West Virginia", "Wisconsin", "Wyoming"
+      ]
+    },
+    "European Union": {
+      "definition": "Laws, regulations, and public policies such as limited and prohibited uses, bans, and moratoriums related to the development and use of facial recognition technologies in the European Union, including those pertaining across all 27 member states.",
+      "aliases": ["European Union", "EU"],
+      "jurisdictions": [
+        "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia",
+        "Denmark", "Estonia", "Finland", "France", "Germany", "Greece",
+        "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg",
+        "Malta", "Netherlands", "Poland", "Portugal", "Romania", "Slovakia",
+        "Slovenia", "Spain", "Sweden"
+      ]
+    }
+  }
+}
