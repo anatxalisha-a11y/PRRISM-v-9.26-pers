@@ -127,8 +127,15 @@ def validate_build(build_dir: Path) -> Dict[str, Any]:
             f"FAISS says {index.d}."
         )
 
-    # 6. build_meta counts must describe actual artifacts
-    meta_chunks = build_meta.get("num_chunks")
+    # 6. build_meta counts must describe actual artifacts.
+    #
+    # Support both the historical metadata schema and the
+    # explicit release metadata schema used by newer builds.
+
+    if "final_chunks" in build_meta:
+        meta_chunks = build_meta.get("final_chunks")
+    else:
+        meta_chunks = build_meta.get("num_chunks")
 
     if meta_chunks != len(chunks):
         raise BuildValidationError(
@@ -137,15 +144,52 @@ def validate_build(build_dir: Path) -> Dict[str, Any]:
             f"chunks.json contains {len(chunks)}."
         )
 
-    meta_sources = build_meta.get("num_sources")
-
-    if meta_sources != len(source_summary):
-        raise BuildValidationError(
-            "Source count mismatch: "
-            f"build_meta.json says {meta_sources}, "
-            f"source_summary.json contains "
-            f"{len(source_summary)}."
+    if "successfully_indexed_sources" in build_meta:
+        successfully_indexed_sources = sum(
+            1
+            for source in source_summary.values()
+            if source.get("num_chunks", 0) > 0
         )
+
+        meta_successful_sources = build_meta.get(
+            "successfully_indexed_sources"
+        )
+
+        if meta_successful_sources != successfully_indexed_sources:
+            raise BuildValidationError(
+                "Successfully indexed source count mismatch: "
+                f"build_meta.json says {meta_successful_sources}, "
+                f"source_summary.json contains "
+                f"{successfully_indexed_sources} sources with "
+                "final indexed chunks."
+            )
+
+        approved_sources = build_meta.get("approved_sources")
+        sources_without_final_chunks = build_meta.get(
+            "sources_without_final_chunks"
+        )
+
+        if (
+            approved_sources is None
+            or sources_without_final_chunks is None
+            or approved_sources - successfully_indexed_sources
+            != sources_without_final_chunks
+        ):
+            raise BuildValidationError(
+                "Approved/source-without-final-chunks accounting "
+                "is inconsistent."
+            )
+
+    else:
+        meta_sources = build_meta.get("num_sources")
+
+        if meta_sources != len(source_summary):
+            raise BuildValidationError(
+                "Source count mismatch: "
+                f"build_meta.json says {meta_sources}, "
+                f"source_summary.json contains "
+                f"{len(source_summary)}."
+            )  
 
     # 7. Every chunk must have the runtime metadata we expect
     for i, chunk in enumerate(chunks):

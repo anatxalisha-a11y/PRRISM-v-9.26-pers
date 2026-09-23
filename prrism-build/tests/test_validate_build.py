@@ -43,6 +43,7 @@ def create_valid_build(tmp_path):
             "source_id": "SRC1",
             "url": "https://example.com",
             "title": "Example Policy",
+            "num_chunks": 1,
         }
     }
 
@@ -211,3 +212,60 @@ def test_empty_chunk_text_fails(tmp_path):
         match="empty text",
     ):
         validate_build(build_dir)
+
+def test_new_metadata_schema_passes(tmp_path):
+    build_dir = create_valid_build(tmp_path)
+
+    meta_path = build_dir / "build_meta.json"
+
+    new_meta = {
+        "build_id": "20260922T203002Z",
+        "built_at": "2026-09-22T20:30:02+00:00",
+        "model": "test-model",
+        "dim": 4,
+        "approved_sources": 1,
+        "successfully_indexed_sources": 1,
+        "sources_without_final_chunks": 0,
+        "recorded_source_failure_events": 0,
+        "final_chunks": 1,
+        "skipped_chunk_events": 0,
+    }
+
+    with meta_path.open("w", encoding="utf-8") as f:
+        json.dump(new_meta, f)
+
+    result = validate_build(build_dir)
+
+    assert result["valid"] is True
+    assert result["num_chunks"] == 1
+    assert result["num_sources"] == 1
+    assert result["dimension"] == 4
+
+
+def test_new_metadata_wrong_successful_source_count_fails(tmp_path):
+    build_dir = create_valid_build(tmp_path)
+
+    meta_path = build_dir / "build_meta.json"
+
+    new_meta = {
+        "build_id": "20260922T203002Z",
+        "built_at": "2026-09-22T20:30:02+00:00",
+        "model": "test-model",
+        "dim": 4,
+        "approved_sources": 2,
+        "successfully_indexed_sources": 2,
+        "sources_without_final_chunks": 0,
+        "recorded_source_failure_events": 0,
+        "final_chunks": 1,
+        "skipped_chunk_events": 0,
+    }
+
+    with meta_path.open("w", encoding="utf-8") as f:
+        json.dump(new_meta, f)
+
+    with pytest.raises(
+        BuildValidationError,
+        match="Successfully indexed source count mismatch",
+    ):
+        validate_build(build_dir)
+
