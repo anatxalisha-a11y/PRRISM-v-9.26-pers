@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+echo "PRRISM index retrieval"
+echo "======================"
+echo
+
+python "${SCRIPT_DIR}/fetch_release.py" \
+    --out-dir "${REPO_ROOT}/out" \
+    "$@"
