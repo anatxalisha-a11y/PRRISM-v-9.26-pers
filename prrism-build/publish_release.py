@@ -5,6 +5,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
+from validate_build import validate_build
 
 
 REQUIRED_FILES = {
@@ -117,6 +118,17 @@ def main() -> None:
     build_dir = args.build_dir.resolve()
 
     validate_files(build_dir)
+
+    print("Running build integrity validation...")
+    validation = validate_build(build_dir)
+
+    print(
+        f"Build validation passed: "
+        f"{validation['num_sources']} sources, "
+        f"{validation['num_chunks']} chunks, "
+        f"dimension {validation['dimension']}."
+    )
+
     metadata = load_metadata(build_dir)
 
     build_id = metadata["build_id"]
