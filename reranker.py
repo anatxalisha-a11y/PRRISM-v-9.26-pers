@@ -1,19 +1,30 @@
-import os
-from typing import List, Dict
+"""Reranking backends for PRRISM retrieval.
 
+Production can use the hosted Hugging Face TEI endpoint.
+Local inference remains available for development and evaluation.
+"""
+
+import os
+from typing import Dict, List
+
+import requests
 from sentence_transformers import CrossEncoder
 
+import logging
 
-RERANK_MODEL_NAME = os.environ.get(
-    "RERANK_MODEL_NAME",
-    "BAAI/bge-reranker-v2-m3",
-)
 
-# Load once when this module is imported.
+RERANK_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+
+DEFAULT_BACKEND = "local"
+REQUEST_TIMEOUT = 30
+
+logger = logging.getLogger(__name__)
+
 _reranker = None
 
 
 def get_reranker():
+    """Lazy-load the local cross-encoder."""
     global _reranker
 
     if _reranker is None:
@@ -22,48 +33,169 @@ def get_reranker():
     return _reranker
 
 
-def rerank(
-    query: str,
-    candidates: List[Dict],
-) -> List[Dict]:
-    """
-    Rerank candidate chunks against a query using a cross-encoder.
+def _prepare_candidates(candidates: List[Dict]) -> List[Dict]:
+    """Copy candidates and preserve the original retrieval score."""
+    prepared = []
 
-    Each candidate must contain a `text` field.
+    for candidate in candidates:
+        item = dict(candidate)
 
-    Returns a new list ordered from most to least relevant.
-    The original FAISS retrieval score is preserved as
-    `retrieval_score`, and the cross-encoder score is stored as
-    `reranker_score`.
-    """
-    if not query or not query.strip() or not candidates:
-        return []
+        if "retrieval_score" not in item and "score" in item:
+            item["retrieval_score"] = item["score"]
 
-    pairs = [
-        (query.strip(), candidate["text"])
-        for candidate in candidates
-    ]
+        prepared.append(item)
 
-    scores = get_reranker().predict(
-        pairs,
-        show_progress_bar=False,
-    )
+    return prepared
 
-    reranked = []
 
-    for candidate, reranker_score in zip(candidates, scores):
-        result = dict(candidate)
+def _rerank_local(query: str, candidates: List[Dict]) -> List[Dict]:
+    """Rerank candidates with the local sentence-transformers model."""
+    pairs = [(query, candidate["text"]) for candidate in candidates]
 
-        # Preserve the original FAISS score explicitly.
-        if "retrieval_score" not in result and "score" in result:
-            result["retrieval_score"] = result["score"]
+    scores = get_reranker().predict(pairs)
 
-        result["reranker_score"] = float(reranker_score)
-        reranked.append(result)
+    for candidate, score in zip(candidates, scores):
+        candidate["reranker_score"] = float(score)
 
-    reranked.sort(
+    return sorted(
+        candidates,
         key=lambda item: item["reranker_score"],
         reverse=True,
     )
 
-    return reranked
+
+def _rerank_hosted(query: str, candidates: List[Dict]) -> List[Dict]:
+    """Rerank candidates using a private Hugging Face TEI endpoint."""
+    endpoint = os.environ.get("HF_RERANKER_ENDPOINT")
+    token = os.environ.get("HF_TOKEN")
+
+    if not endpoint:
+        raise RuntimeError(
+            "HF_RERANKER_ENDPOINT is required when "
+            "RERANKER_BACKEND=hosted."
+        )
+
+    if not token:
+        raise RuntimeError(
+            "HF_TOKEN is required when RERANKER_BACKEND=hosted."
+        )
+
+    url = f"{endpoint.rstrip('/')}/rerank"
+
+    response = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "query": query,
+            "texts": [candidate["text"] for candidate in candidates],
+            "raw_scores": True,
+            "return_text": False,
+        },
+        timeout=REQUEST_TIMEOUT,
+    )
+
+    response.raise_for_status()
+    results = response.json()
+
+    if len(results) != len(candidates):
+        raise RuntimeError(
+            "Hosted reranker returned an unexpected number of results."
+        )
+
+    ranked = []
+
+    for result in results:
+        index = result.get("index")
+        score = result.get("score")
+
+        if not isinstance(index, int):
+            raise RuntimeError(
+                "Hosted reranker returned an invalid candidate index."
+            )
+
+        if index < 0 or index >= len(candidates):
+            raise RuntimeError(
+                "Hosted reranker returned an out-of-range candidate index."
+            )
+
+        if score is None:
+            raise RuntimeError(
+                "Hosted reranker returned a result without a score."
+            )
+
+        candidate = dict(candidates[index])
+        candidate["reranker_score"] = float(score)
+        ranked.append(candidate)
+
+    return ranked
+
+def _fallback_to_retrieval(
+    candidates: List[Dict],
+    error: Exception,
+) -> List[Dict]:
+    """Preserve FAISS ordering when the hosted reranker is unavailable."""
+    logger.warning(
+        "Hosted reranker unavailable; falling back to retrieval order: %s",
+        error,
+    )
+
+    fallback = []
+
+    for candidate in candidates:
+        item = dict(candidate)
+        item["reranker_score"] = None
+        item["reranker_fallback"] = True
+        fallback.append(item)
+
+    return fallback
+
+def rerank(query: str, candidates: List[Dict]) -> List[Dict]:
+    """Rerank retrieval candidates using the configured backend."""
+    if not candidates:
+        return []
+
+    prepared = _prepare_candidates(candidates)
+
+    backend = os.environ.get(
+        "RERANKER_BACKEND",
+        DEFAULT_BACKEND,
+    ).strip().lower()
+
+    if backend == "local":
+        return _rerank_local(query, prepared)
+
+    if backend == "hosted":
+        # Missing credentials/configuration are deployment errors.
+        # Do not silently hide them with the retrieval fallback.
+        endpoint = os.environ.get("HF_RERANKER_ENDPOINT")
+        token = os.environ.get("HF_TOKEN")
+
+        if not endpoint:
+            raise RuntimeError(
+                "HF_RERANKER_ENDPOINT is required when "
+                "RERANKER_BACKEND=hosted."
+            )
+
+        if not token:
+            raise RuntimeError(
+                "HF_TOKEN is required when "
+                "RERANKER_BACKEND=hosted."
+            )
+
+        try:
+            return _rerank_hosted(query, prepared)
+        except requests.RequestException as error:
+            return _fallback_to_retrieval(
+                prepared,
+                error,
+            )
+
+    # Anything other than the explicitly supported backends
+    # is a configuration error.
+    raise ValueError(
+        f"Unsupported RERANKER_BACKEND: {backend!r}. "
+        "Expected 'local' or 'hosted'."
+    )
