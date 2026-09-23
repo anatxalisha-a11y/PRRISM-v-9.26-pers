@@ -8,6 +8,7 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 from reranker import rerank
+from functools import lru_cache
 
 # Use the same embedding model that was used when building the FAISS index
 EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL_NAME", "BAAI/bge-base-en-v1.5")
@@ -24,24 +25,32 @@ DEFAULT_CANDIDATE_K = 25
 DEFAULT_MAX_PER_SOURCE = 2
 
 # Load once globally so it doesn't reload on every query
-_model = SentenceTransformer(EMBED_MODEL_NAME)
+_model = None
+
+
+def get_embedding_model():
+    """
+    Load the embedding model once and reuse it for subsequent queries.
+    """
+    global _model
+
+    if _model is None:
+        _model = SentenceTransformer(EMBED_MODEL_NAME)
+
+    return _model
 
 
 def embed(texts: List[str]) -> List[List[float]]:
-    """
-    Convert input texts into normalized embeddings using a local model.
-    These embeddings must live in the same vector space as the embeddings
-    used to build the FAISS index.
-    """
     if not texts:
         return []
 
-    embeddings = _model.encode(
+    embeddings = get_embedding_model().encode(
         texts,
         normalize_embeddings=True,
         convert_to_numpy=True,
         show_progress_bar=False,
     )
+
     return embeddings.tolist()
 
 
@@ -135,7 +144,7 @@ def check_server() -> str:
     """
     return f"Using local embedding model: {EMBED_MODEL_NAME}"
 
-
+@lru_cache(maxsize=1)
 def load_artifacts():
     """
     Load the currently published FAISS index and chunks metadata.

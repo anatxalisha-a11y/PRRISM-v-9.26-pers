@@ -2,6 +2,7 @@ import numpy as np
 import faiss
 
 import search_engine
+import json
 
 
 def make_test_index():
@@ -164,3 +165,67 @@ def test_empty_query_skips_reranker(monkeypatch):
 
     assert search_engine.search(index, chunks, "") == []
     assert search_engine.search(index, chunks, "   ") == []
+
+def test_embedding_model_is_lazy_loaded(monkeypatch):
+    search_engine._model = None
+
+    created = []
+
+    class FakeModel:
+        pass
+
+    def fake_sentence_transformer(model_name):
+        created.append(model_name)
+        return FakeModel()
+
+    monkeypatch.setattr(
+        search_engine,
+        "SentenceTransformer",
+        fake_sentence_transformer,
+    )
+
+    first = search_engine.get_embedding_model()
+    second = search_engine.get_embedding_model()
+
+    assert first is second
+    assert created == [search_engine.EMBED_MODEL_NAME]
+
+    search_engine._model = None
+
+
+def test_load_artifacts_is_cached(tmp_path, monkeypatch):
+    index = faiss.IndexFlatIP(2)
+
+    vectors = np.array([
+        [1.0, 0.0],
+        [0.0, 1.0],
+    ], dtype=np.float32)
+
+    index.add(vectors)
+
+    index_path = tmp_path / "faiss.index"
+    chunks_path = tmp_path / "chunks.json"
+
+    faiss.write_index(index, str(index_path))
+
+    chunks_path.write_text(
+        """
+        [
+            {"text": "A", "source_id": "A"},
+            {"text": "B", "source_id": "B"}
+        ]
+        """
+    )
+
+    monkeypatch.setattr(search_engine, "INDEX_PATH", index_path)
+    monkeypatch.setattr(search_engine, "CHUNKS_PATH", chunks_path)
+
+    search_engine.load_artifacts.cache_clear()
+
+    first_index, first_chunks = search_engine.load_artifacts()
+    second_index, second_chunks = search_engine.load_artifacts()
+
+    assert first_index is second_index
+    assert first_chunks is second_chunks
+
+    search_engine.load_artifacts.cache_clear()
