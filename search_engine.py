@@ -2,6 +2,7 @@ import os
 import json
 from typing import List, Dict
 from pathlib import Path
+from diversity import select_diverse_results
 
 import numpy as np
 import faiss
@@ -20,6 +21,7 @@ CHUNKS_PATH = CURRENT_DIR / "chunks.json"
 
 DEFAULT_TOP_K = 5
 DEFAULT_CANDIDATE_K = 25
+DEFAULT_MAX_PER_SOURCE = 2
 
 # Load once globally so it doesn't reload on every query
 _model = SentenceTransformer(EMBED_MODEL_NAME)
@@ -108,7 +110,11 @@ def search(
     for reranker_rank, result in enumerate(reranked, start=1):
         result["reranker_rank"] = reranker_rank
 
-    return reranked[:top_k]
+    return select_diverse_results(
+        reranked,
+        top_k=top_k,
+        max_per_source=DEFAULT_MAX_PER_SOURCE,
+    )
 
 
 def format_tag_list(tag_matches: List[Dict], show_score: bool = True) -> str:
