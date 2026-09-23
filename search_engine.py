@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
-
+from reranker import rerank
 
 # Use the same embedding model that was used when building the FAISS index
 EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL_NAME", "BAAI/bge-base-en-v1.5")
@@ -19,6 +19,7 @@ INDEX_PATH = CURRENT_DIR / "faiss.index"
 CHUNKS_PATH = CURRENT_DIR / "chunks.json"
 
 DEFAULT_TOP_K = 5
+DEFAULT_CANDIDATE_K = 25
 
 # Load once globally so it doesn't reload on every query
 _model = SentenceTransformer(EMBED_MODEL_NAME)
@@ -61,33 +62,53 @@ def search(
     index: faiss.Index,
     chunks: List[Dict],
     query: str,
-    top_k: int = DEFAULT_TOP_K
+    top_k: int = DEFAULT_TOP_K,
+    candidate_k: int = DEFAULT_CANDIDATE_K,
 ) -> List[Dict]:
     """
-    Embed the query locally, search the FAISS index, and return the top hits
-    along with their chunk metadata.
+    Embed the query locally, retrieve candidate chunks from FAISS,
+    rerank them with the cross-encoder, and return the top results.
     """
     if not query or not query.strip():
         return []
 
+    # We need at least top_k candidates, but never request more
+    # vectors than actually exist in the index.
+    candidate_k = min(
+        max(candidate_k, top_k),
+        index.ntotal,
+    )
+
     qv = np.array(embed([query.strip()]), dtype=np.float32)
     faiss.normalize_L2(qv)
 
-    scores, ids = index.search(qv, top_k)
+    scores, ids = index.search(qv, candidate_k)
 
-    results = []
-    for score, idx in zip(scores[0], ids[0]):
+    candidates = []
+
+    for retrieval_rank, (score, idx) in enumerate(
+        zip(scores[0], ids[0]),
+        start=1,
+    ):
         if idx == -1:
             continue
 
         item = chunks[int(idx)]
-        results.append({
+
+        candidates.append({
             "score": float(score),
+            "retrieval_score": float(score),
+            "retrieval_rank": retrieval_rank,
             "search_type": "semantic_local",
             **item,
         })
 
-    return results
+    reranked = rerank(query, candidates)
+
+    for reranker_rank, result in enumerate(reranked, start=1):
+        result["reranker_rank"] = reranker_rank
+
+    return reranked[:top_k]
 
 
 def format_tag_list(tag_matches: List[Dict], show_score: bool = True) -> str:
