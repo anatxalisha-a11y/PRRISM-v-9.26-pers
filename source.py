@@ -15,6 +15,8 @@ from search_engine import (
     search,
 )
 
+from runtime_artifacts import ensure_runtime_artifacts
+
 
 # =============================================================================
 # PAGE CONFIG
@@ -807,8 +809,10 @@ header[data-testid="stHeader"] {
 
 @st.cache_resource
 def get_artifacts():
-    """Load the active PRRISM retrieval artifacts once."""
-
+    """Prepare and load the active PRRISM retrieval artifacts."""
+    
+    ensure_runtime_artifacts()
+    
     return load_artifacts()
 
 
@@ -1023,7 +1027,7 @@ def render_ranked_results(
             '</div>'
 
             '<div class="results-context">'
-            'Ranked by relevance'
+            'Ranked by relevance [NOTE~ we may wanna tweak this]'
             '</div>'
 
             '</div>'
