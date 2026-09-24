@@ -1,6 +1,6 @@
 import pytest
 
-from answer_generator import (
+from generation.answer_generator import (
     build_citation_map,
     build_evidence,
     validate_generated_answer,

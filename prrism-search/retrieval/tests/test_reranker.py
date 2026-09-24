@@ -1,5 +1,5 @@
 def test_hosted_reranker(monkeypatch):
-    import reranker
+    import retrieval.reranker as reranker
 
     candidates = [
         {"text": "first", "score": 0.9},
@@ -74,7 +74,7 @@ def test_hosted_reranker(monkeypatch):
 
 def test_hosted_reranker_requires_endpoint(monkeypatch):
     import pytest
-    import reranker
+    import retrieval.reranker as reranker
 
     monkeypatch.setenv("RERANKER_BACKEND", "hosted")
     monkeypatch.delenv(
@@ -95,7 +95,7 @@ def test_hosted_reranker_requires_endpoint(monkeypatch):
 
 def test_hosted_reranker_requires_token(monkeypatch):
     import pytest
-    import reranker
+    import retrieval.reranker as reranker
 
     monkeypatch.setenv("RERANKER_BACKEND", "hosted")
     monkeypatch.setenv(
@@ -119,7 +119,7 @@ def test_hosted_reranker_requires_token(monkeypatch):
 
 def test_hosted_reranker_rejects_bad_result_count(monkeypatch):
     import pytest
-    import reranker
+    import retrieval.reranker as reranker
 
     candidates = [
         {"text": "first"},
@@ -160,7 +160,7 @@ def test_hosted_reranker_rejects_bad_result_count(monkeypatch):
 
 def test_invalid_reranker_backend(monkeypatch):
     import pytest
-    import reranker
+    import retrieval.reranker as reranker
 
     monkeypatch.setenv(
         "RERANKER_BACKEND",
@@ -178,7 +178,7 @@ def test_invalid_reranker_backend(monkeypatch):
 
 def test_hosted_reranker_falls_back_on_request_failure(monkeypatch):
     import requests
-    import reranker
+    import retrieval.reranker as reranker
 
     candidates = [
         {"text": "first", "score": 0.9},
@@ -226,7 +226,7 @@ def test_hosted_reranker_falls_back_on_request_failure(monkeypatch):
 
 def test_hosted_reranker_falls_back_on_http_429(monkeypatch):
     import requests
-    import reranker
+    import retrieval.reranker as reranker
 
     candidates = [
         {"text": "first", "score": 0.9},

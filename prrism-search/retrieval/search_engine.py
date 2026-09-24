@@ -8,8 +8,8 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 
-from diversity import select_diverse_results
-from reranker import rerank
+from retrieval.diversity import select_diverse_results
+from retrieval.reranker import rerank
 
 
 # Use the same embedding model that was used when building the FAISS index.

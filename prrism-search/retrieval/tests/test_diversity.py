@@ -1,6 +1,6 @@
 import pytest
 
-from diversity import select_diverse_results
+from retrieval.diversity import select_diverse_results
 
 
 def test_limits_chunks_per_source():

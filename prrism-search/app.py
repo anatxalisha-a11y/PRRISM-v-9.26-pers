@@ -6,16 +6,17 @@ import re
 import streamlit as st
 import streamlit.components.v1 as components
 
-from answer_generator import (
+from generation.answer_generator import (
     build_evidence,
     generate_answer,
 )
-from search_engine import (
+
+from retrieval.search_engine import (
     load_artifacts,
     search,
 )
 
-from runtime_artifacts import ensure_runtime_artifacts
+from runtime.runtime_artifacts import ensure_runtime_artifacts
 
 import resource
 

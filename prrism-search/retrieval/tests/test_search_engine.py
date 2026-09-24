@@ -1,7 +1,7 @@
 import numpy as np
 import faiss
 
-import search_engine
+import retrieval.search_engine as search_engine
 import json
 
 
