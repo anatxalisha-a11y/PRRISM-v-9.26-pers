@@ -17,6 +17,18 @@ from search_engine import (
 
 from runtime_artifacts import ensure_runtime_artifacts
 
+import resource
+
+
+def log_memory(label: str) -> None:
+    """Log this process's peak memory usage to deployment logs."""
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    memory_mb = usage.ru_maxrss / 1024  # Linux: KB -> MB
+    print(f"[MEMORY] {label}: {memory_mb:.1f} MB", flush=True)
+
+
+log_memory("App startup")
+
 
 # =============================================================================
 # PAGE CONFIG
@@ -805,7 +817,8 @@ header[data-testid="stHeader"] {
 
 # =============================================================================
 # RESOURCES
-# =============================================================================
+# ============================================================================
+
 
 @st.cache_resource
 def get_artifacts():
@@ -821,6 +834,7 @@ try:
     index, chunks = (
         get_artifacts()
     )
+    log_memory("Artifacts loaded")
 
 except Exception:
 
@@ -1430,6 +1444,7 @@ if (
                     source_count,
                 )
             )
+            log_memory("Query complete")
 
         except Exception as exc:
 
