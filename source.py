@@ -2,8 +2,16 @@
 
 import html
 import re
+import sys
+from pathlib import Path
+
+# Application modules live under prrism-search/.
+APP_DIR = Path(__file__).resolve().parent / "prrism-search"
+sys.path.insert(0, str(APP_DIR))
 
 import streamlit as st
+
+
 import streamlit.components.v1 as components
 
 from generation.answer_generator import (

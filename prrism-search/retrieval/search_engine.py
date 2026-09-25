@@ -18,7 +18,7 @@ EMBED_MODEL_NAME = os.environ.get(
     "BAAI/bge-base-en-v1.5",
 )
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 OUT_DIR = BASE_DIR / "out"
 CURRENT_DIR = OUT_DIR / "current"
